@@ -188,7 +188,7 @@ def run_task(runnable_task, output_dir, task_stdout, task_stderr, debug_mode):
     """
     started_at = time.time()
 
-    rcode = -1
+    rcode = 0
     err_msg = ""
     # host = socket.getfqdn()
     host = platform.node()
