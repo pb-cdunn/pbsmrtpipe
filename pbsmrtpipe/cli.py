@@ -609,19 +609,17 @@ def get_parser():
     return p
 
 
-def _pbsmrtipe_setup_log(alog, **kwargs):
+def _pbsmrtipe_setup_log(alog,
+        level=logging.INFO, file_name=None, log_filter=StdOutStatusLogFilter(),
+        str_formatter='[%(levelname)s] %(asctime)-15s %(message)s'):
     """Setup stdout log. pbsmrtpipe will setup pbsmrtpipe.log, master.log
 
     This should only emit 'status.*' messages.
     """
-
-    str_formatter = '[%(levelname)s] %(asctime)-15s %(message)s'
-
-    level = kwargs.get('level', logging.INFO)
     setup_log(alog,
               level=level,
-              file_name=None,
-              log_filter=StdOutStatusLogFilter(),
+              file_name=file_name,
+              log_filter=log_filter,
               str_formatter=str_formatter)
 
     slog.info("Starting pbsmrtpipe v{v}".format(v=pbsmrtpipe.get_version()))

@@ -97,6 +97,12 @@ def args_executer(args):
 
     return return_code
 
+PBSMRTPIPE_DEBUG = 'PBSMRTPIPE_DEBUG'
+_debug_str_formatter='[%(levelname)5s]%(process)05d@%(asctime)-15sZ [%(name)s %(funcName)s() %(lineno)4d:%(filename)s]\n\t%(message)s'
+
+class _AllRecords(logging.Filter):
+    def filter(self, record):
+        return True
 
 def main_runner(argv, parser, exe_runner_func, setup_log_func, alog):
     """
@@ -107,13 +113,18 @@ def main_runner(argv, parser, exe_runner_func, setup_log_func, alog):
     # log.debug(args)
 
     # setup log
-    if hasattr(args, 'debug'):
-        if args.debug:
-            setup_log_func(alog, level=logging.DEBUG)
-        else:
-            alog.addHandler(logging.NullHandler())
-    else:
+    if not getattr(args, 'debug', False):
         alog.addHandler(logging.NullHandler())
+    elif os.environ.get(PBSMRTPIPE_DEBUG):
+        sys.stderr.write('[main_runner] In ENV, %s=%s\n' %(PBSMRTPIPE_DEBUG, os.environ.get(PBSMRTPIPE_DEBUG)))
+        setup_log_func(alog,
+                level=logging.DEBUG,
+                log_filter=_AllRecords(),
+                str_formatter=_debug_str_formatter,
+        )
+    else:
+        sys.stderr.write('[main_runner] DEBUG mode. (For more verbosity, export PBSMRTPIPE_DEBUG=1 )\n')
+        setup_log_func(alog, level=logging.DEBUG)
 
     log.debug(args)
     alog.info("Starting tool version {v}".format(v=parser.version))
