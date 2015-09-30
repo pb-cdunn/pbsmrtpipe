@@ -248,7 +248,7 @@ def run_task(runnable_task, output_dir, task_stdout, task_stderr, debug_mode):
                 log.info("Running command \n" + cmd)
 
                 # see run_command API for future fixes
-                rcode, _, _, run_time = run_command(cmd, stdout_fh, stderr_fh, time_out=None)
+                rcode, run_time = run_command(cmd, stdout_fh, stderr_fh, time_out=None)
 
                 if rcode != 0:
                     err_msg_ = "Failed task {i} exit code {r} in {s:.2f} sec (See file '{f}'.)".format(i=runnable_task.task.task_id, r=rcode, s=run_time, f=task_stderr)

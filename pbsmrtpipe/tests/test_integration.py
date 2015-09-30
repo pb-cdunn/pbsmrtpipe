@@ -64,7 +64,8 @@ class TestHelloWorldCluster(unittest.TestCase):
         time_out = 60 * 5
         with tempfile.TemporaryFile() as stdout_tmp:
             with tempfile.TemporaryFile() as stderr_tmp:
-                rcode, stdout, stderr, run_time = run_command(cmd, stdout_tmp, stderr_tmp, time_out=time_out)
+                rcode, run_time = run_command(cmd, stdout_tmp, stderr_tmp, time_out=time_out)
+                stdout = stderr = '' # This was the actual behavior of run_command().
         log.debug((rcode, stdout, stderr, run_time))
 
         if rcode != 0:
@@ -126,7 +127,8 @@ class _TestDriverIntegrationBase(unittest.TestCase):
         log.debug(cmd)
         with open(stdout_path, 'w') as wo:
             with open(stderr_path, 'w') as we:
-                rcode, stdout_results, stderr_results, run_time = run_command(cmd, wo, we)
+                rcode, run_time = run_command(cmd, wo, we)
+                stdout_results = stderr_results = '' # This was the actual behavior of run_command().
 
         log.debug("Integration Job {i} state {s} in {t:.2f} sec.".format(i=self.JOB_NAME, s=rcode, t=run_time))
 

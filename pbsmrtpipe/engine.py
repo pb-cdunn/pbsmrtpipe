@@ -142,16 +142,21 @@ def create_file_tail_reader(fn):
     return FileTailWhenReady(fn, EmptyTail())
 
 
-def run_command_async(command, stdout_fn, stderr_fn):
+def run_command_async(cmd, stdout_fn, stderr_fn):
+    """Run command while logging stdout/stderr.
+
+    :return: (exit code, run_time_sec)
+    """
     # Create filehandles.
     ofho = open(stdout_fn, 'w')
     ofhe = open(stderr_fn, 'w')
 
     # Launch the command as subprocess.
-    slog.info("subcommand: `%s` in %s"%(command, os.getcwd()))
-    process = subprocess.Popen(shlex.split(command), stdout=ofho,
+    hostname = platform.node()
+    cwd = os.getcwd()
+    slog.info("calling cmd async '{c}' on {h} in {d}".format(c=cmd, h=hostname, d=cwd))
+    process = subprocess.Popen(shlex.split(cmd), stdout=ofho,
                                stderr=ofhe)
-
     # Start.
     process.poll()
     slog.debug(" pid={pid}".format(pid=process.pid))
@@ -213,11 +218,9 @@ def run_command_async(command, stdout_fn, stderr_fn):
 def run_command(cmd, stdout_fh, stderr_fh, shell=True, time_out=None):
     """Run command
 
-
     :param time_out: (None, Int) Timeout in seconds.
 
-    :return: (exit code, stdout, stderr, run_time_sec)
-
+    :return: (exit code, run_time_sec)
     """
 
     started_at = time.time()
@@ -226,7 +229,8 @@ def run_command(cmd, stdout_fh, stderr_fh, shell=True, time_out=None):
         cmd = shlex.split(cmd)
 
     hostname = platform.node()
-    slog.debug("calling cmd '{c}' on {h}".format(c=cmd, h=hostname))
+    cwd = os.getcwd()
+    slog.info("calling cmd '{c}' on {h} in {d}".format(c=cmd, h=hostname, d=cwd))
     process = subprocess.Popen(cmd, stderr=stderr_fh, stdout=stdout_fh, shell=shell)
 
     # This needs a better dynamic model
@@ -261,11 +265,7 @@ def run_command(cmd, stdout_fh, stderr_fh, shell=True, time_out=None):
     returncode = process.returncode
     log.info("returncode is {r} in {s:.2f} sec.".format(r=process.returncode,
                                                         s=run_time))
-
-    # FIXME. There's friction with the FH model and not breaking the API
-    # In principle, the stdout can be large, hence using FH
-    stdout, stderr = "", ""
-    return returncode, stdout, stderr, run_time
+    return returncode, run_time
 
 
 def get_results_from_queue(queue):
