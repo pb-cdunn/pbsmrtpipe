@@ -141,21 +141,25 @@ def run_butler(butler, test_cases, output_xml,
         return os.path.join(butler.output_dir, file_name)
 
     # pbsmrtpipe stdout and stderr
-    stdout = _to_p('job.stdout')
-    stderr = _to_p('job.stderr')
+    stdout_fn = _to_p('job.stdout')
+    stderr_fn = _to_p('job.stderr')
 
-    with open(stdout, 'w') as stdout_fh:
-        with open(stderr, 'w') as stderr_fh:
+    def rmtouch(fn):
+        log.debug("rm -f %r" %fn)
+        with open(fn, 'w'):
+            pass
+    rmtouch(stdout_fn)
+    rmtouch(stderr_fn)
 
-            rcode, stdout, stderr, run_time = run_command_async(cmd, stdout_fh, stderr_fh)
+    rcode, run_time = run_command_async(cmd, stdout_fn, stderr_fn)
 
-            rmessage = "was successful" if rcode == 0 else " failed"
-            msg = "pbsmrtpipe command {m} ({s:.2f} sec) exit code {e}.'".format(e=rcode, s=run_time, m=rmessage)
-            if rcode != 0:
-                slog.error(msg)
-                log.error(str(stderr))
-            else:
-                slog.info(msg)
+    rmessage = "was successful" if rcode == 0 else " failed"
+    msg = "pbsmrtpipe command {m} ({s:.2f} sec) exit code {e}.'".format(e=rcode, s=run_time, m=rmessage)
+    if rcode != 0:
+        slog.error(msg)
+        log.error(stderr_fn)
+    else:
+        slog.info(msg)
 
         if test_cases is not None:
             slog.info("Running in test-only mode")

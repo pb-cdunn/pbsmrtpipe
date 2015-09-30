@@ -141,45 +141,24 @@ class EmptyTail(object):
 def create_file_tail_reader(fn):
     return FileTailWhenReady(fn, EmptyTail())
 
-import itertools
-_counter = itertools.count()
-# _counter.next() is thread-safe.
 
-def run_command_async(command, file_stdout=None, file_stderr=None):
-    # Choose output filenames.
-    c = _counter.next()
-    fno = '%d.stdout' %c
-    fne = '%d.stderr' %c
-
-    # Delete old files.
-    def rm(fn):
-        print "RM: %r" %fn
-        if os.path.exists(fn):
-            os.unlink(fn)
-    rm(fno)
-    rm(fne)
-
+def run_command_async(command, fn_stdout, fn_stderr):
     # Create filehandles.
-    ofho = open(fno, 'w')
-    ofhe = open(fne, 'w')
+    ofho = open(fn_stdout, 'w')
+    ofhe = open(fn_stderr, 'w')
 
     # Launch the command as subprocess.
     slog.info("subcommand: `%s` in %s"%(command, os.getcwd()))
     process = subprocess.Popen(shlex.split(command), stdout=ofho,
                                stderr=ofhe)
 
-    # wait till the process has been loaded and stdout and stderr have been 'created'
-    #time.sleep(1)
+    # Start.
     process.poll()
     slog.debug(" pid={pid}".format(pid=process.pid))
 
     # Launch the asynchronous readers of the process' stdout and stderr.
-    stdout_reader = create_file_tail_reader(fno)
-    stderr_reader = create_file_tail_reader(fne)
-
-    # store the stdout and stderr
-    stdouts = []
-    stderrs = []
+    stdout_reader = create_file_tail_reader(fn_stdout)
+    stderr_reader = create_file_tail_reader(fn_stderr)
 
     started_at = time.time()
 
@@ -188,10 +167,8 @@ def run_command_async(command, file_stdout=None, file_stderr=None):
                 write(line.rstrip())
     def stdout_write(line):
         slog.info(line)
-        stdouts.append(line)
     def stderr_write(line):
         slog.error(line)
-        stderrs.append(line)
 
     # Check the readers if we received some output (until there is nothing
     # more to get).
@@ -215,10 +192,6 @@ def run_command_async(command, file_stdout=None, file_stderr=None):
         #slog.exception(e)  # TODO: Delete this line, when confident this is logged elsewhere.
         raise
     finally:
-        # Let's be tidy and join the threads we've started.
-        ##stdout_reader.join()
-        ##stderr_reader.join()
-
         # This will cause NFS to update the files,
         # according to a friend at AMD. They had this problem in spades there.
         os.listdir('.')
@@ -232,21 +205,9 @@ def run_command_async(command, file_stdout=None, file_stderr=None):
         # Close subprocess' file descriptors.
         ofho.close()
         ofhe.close()
-        #process.stdout.close()
-        #process.stderr.close()
-
-    def _write_to_fh_or_file(fh_or_file, contents):
-        if hasattr(fh_or_file, 'write'):
-            fh_or_file.write(contents)
-        else:
-            with open(fh_or_file, 'w') as w:
-                w.write(contents)
-
-    _write_to_fh_or_file(file_stderr, "\n".join(stderrs))
-    _write_to_fh_or_file(file_stdout, "\n".join(stdouts))
 
     run_time = time.time() - started_at
-    return process.returncode, "\n".join(stdouts), "\n".join(stderrs), run_time
+    return process.returncode, run_time
 
 
 def run_command(cmd, stdout_fh, stderr_fh, shell=True, time_out=None):
