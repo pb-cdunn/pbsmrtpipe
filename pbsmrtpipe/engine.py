@@ -142,10 +142,10 @@ def create_file_tail_reader(fn):
     return FileTailWhenReady(fn, EmptyTail())
 
 
-def run_command_async(command, fn_stdout, fn_stderr):
+def run_command_async(command, stdout_fn, stderr_fn):
     # Create filehandles.
-    ofho = open(fn_stdout, 'w')
-    ofhe = open(fn_stderr, 'w')
+    ofho = open(stdout_fn, 'w')
+    ofhe = open(stderr_fn, 'w')
 
     # Launch the command as subprocess.
     slog.info("subcommand: `%s` in %s"%(command, os.getcwd()))
@@ -157,8 +157,8 @@ def run_command_async(command, fn_stdout, fn_stderr):
     slog.debug(" pid={pid}".format(pid=process.pid))
 
     # Launch the asynchronous readers of the process' stdout and stderr.
-    stdout_reader = create_file_tail_reader(fn_stdout)
-    stderr_reader = create_file_tail_reader(fn_stderr)
+    stdout_reader = create_file_tail_reader(stdout_fn)
+    stderr_reader = create_file_tail_reader(stderr_fn)
 
     started_at = time.time()
 
