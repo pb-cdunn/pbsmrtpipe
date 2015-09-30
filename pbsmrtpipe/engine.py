@@ -219,10 +219,9 @@ def run_command(cmd, stdout_fh, stderr_fh, shell=True, time_out=None):
     """Run command
 
     :param time_out: (None, Int) Timeout in seconds.
-
+    :param stdout_fh, stderr_fh, shell: Passed along to subprocess.Popen()
     :return: (exit code, run_time_sec)
     """
-
     started_at = time.time()
     # Most of the current pacbio shell commands have aren't shlex-able
     if not shell:

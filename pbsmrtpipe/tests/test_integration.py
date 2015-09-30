@@ -60,7 +60,7 @@ class TestHelloWorldCluster(unittest.TestCase):
 
         log.info(sh_script)
         cmd = r.render("start", sh_script, 'test_job_01', stdout=stdout, stderr=stderr, nproc=1)
-        log.debug("Running qsub command '{c}'".format(c=cmd))
+        log.debug("Running qsub command '{c} > /dev/null'".format(c=cmd))
         time_out = 60 * 5
         with tempfile.TemporaryFile() as stdout_tmp:
             with tempfile.TemporaryFile() as stderr_tmp:
@@ -69,8 +69,6 @@ class TestHelloWorldCluster(unittest.TestCase):
         log.debug((rcode, stdout, stderr, run_time))
 
         if rcode != 0:
-            log.info(stdout)
-            log.error(stderr)
             log.error("Failed Integration Job {i} with exit code {r}".format(i=job_name, r=rcode))
             if os.path.exists(stderr):
                 with open(stderr, 'r') as f:
@@ -128,14 +126,11 @@ class _TestDriverIntegrationBase(unittest.TestCase):
         with open(stdout_path, 'w') as wo:
             with open(stderr_path, 'w') as we:
                 rcode, run_time = run_command(cmd, wo, we)
-                stdout_results = stderr_results = '' # This was the actual behavior of run_command().
 
         log.debug("Integration Job {i} state {s} in {t:.2f} sec.".format(i=self.JOB_NAME, s=rcode, t=run_time))
 
         if rcode != 0:
             log.error("Integration Job {i} failed.".format(i=self.JOB_NAME))
-            log.error(stdout_results)
-            log.error(stderr_results)
             if os.path.exists(stderr_path):
                 with open(stderr_path, 'r') as f:
                     log.error(f.read())
