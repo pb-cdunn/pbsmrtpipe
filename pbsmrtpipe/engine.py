@@ -71,31 +71,6 @@ def backticks(cmd, merge_stderr=True):
     return errCode, output, errorMessage, run_time
 
 
-class AsynchronousFileReader(threading.Thread):
-
-    """
-    Helper class to implement asynchronous reading of a file
-    in a separate thread. Pushes read lines on a queue to
-    be consumed in another thread.
-    """
-
-    def __init__(self, fd, queue):
-        assert isinstance(queue, Queue.Queue)
-        assert callable(fd.readline)
-        threading.Thread.__init__(self)
-        self._fd = fd
-        self._queue = queue
-
-    def run(self):
-        """The body of the tread: read lines and put them on the queue."""
-        for line in iter(self._fd.readline, ''):
-            self._queue.put(line)
-
-    def eof(self):
-        """Check whether there is no more content to expect."""
-        return not self.is_alive() and self._queue.empty()
-
-
 class FileTail(object):
     """Like 'tail -f'.
     """
@@ -171,11 +146,6 @@ _counter = itertools.count()
 # _counter.next() is thread-safe.
 
 def run_command_async(command, file_stdout=None, file_stderr=None):
-    """
-    Async pulling of the stdout, stderr from the subprocess without deadlocking.
-
-    Modified from: http://stefaanlippens.net/python-asynchronous-subprocess-pipe-reading
-    """
     # Choose output filenames.
     c = _counter.next()
     fno = '%d.stdout' %c
@@ -204,16 +174,8 @@ def run_command_async(command, file_stdout=None, file_stderr=None):
     slog.debug(" pid={pid}".format(pid=process.pid))
 
     # Launch the asynchronous readers of the process' stdout and stderr.
-    stdout_queue = create_file_tail_reader(fno)
-    stderr_queue = create_file_tail_reader(fne)
-    """
-    stdout_queue = Queue.Queue()
-    stdout_reader = AsynchronousFileReader(process.stdout, stdout_queue)
-    stdout_reader.start()
-    stderr_queue = Queue.Queue()
-    stderr_reader = AsynchronousFileReader(process.stderr, stderr_queue)
-    stderr_reader.start()
-    """
+    stdout_reader = create_file_tail_reader(fno)
+    stderr_reader = create_file_tail_reader(fne)
 
     # store the stdout and stderr
     stdouts = []
@@ -231,15 +193,15 @@ def run_command_async(command, file_stdout=None, file_stderr=None):
         slog.error(line)
         stderrs.append(line)
 
-    # Check the queues if we received some output (until there is nothing
+    # Check the readers if we received some output (until there is nothing
     # more to get).
     try:
       while process.returncode is None:
         # Show what we received from standard output.
-        readlines(stdout_queue, stdout_write)
+        readlines(stdout_reader, stdout_write)
 
         # Show what we received from standard error.
-        readlines(stderr_queue, stderr_write)
+        readlines(stderr_reader, stderr_write)
 
         # Sleep a bit before asking the readers again.
         time.sleep(1)
@@ -264,8 +226,8 @@ def run_command_async(command, file_stdout=None, file_stderr=None):
         # big deal. It's merely informative, and it's always available to
         # the curious in the stdout/err files.
 
-        readlines(stdout_queue, stdout_write)
-        readlines(stderr_queue, stderr_write)
+        readlines(stdout_reader, stdout_write)
+        readlines(stderr_reader, stderr_write)
 
         # Close subprocess' file descriptors.
         ofho.close()
