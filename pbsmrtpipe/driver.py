@@ -149,9 +149,9 @@ def _get_last_lines_of_stderr(n, stderr_path):
         with open(stderr_path, 'r') as f:
             lines = deque(f, n)
             lines = [l.rstrip() for l in lines]
-    except Exception as e:
-        log.exception("Unable to extract stderr from {p} Error {e}".format(p=stderr_path, e=e.message))
-
+    except Exception:
+        log.warning("Unable to extract stderr from {p}".format(p=stderr_path))
+        raise
     return lines
 
 
@@ -347,8 +347,9 @@ def __exe_workflow(global_registry, ep_d, bg, task_opts, workflow_opts, output_d
                 T.write_task_report(job_resources, task_.task_id, path_, DU._get_images_in_dir(task_.output_dir))
                 update_analysis_file_links(tnode_.idx, path_)
 
-    def _log_task_failure_and_call_services(path_to_stderr, task_id_):
+    def _log_task_failure_and_call_services(task_dir, task_id_):
         """log the error messages extracted from stderr"""
+        path_to_stderr = os.path.join(task_dir, 'stderr') # by convention
         lines = _get_last_lines_of_stderr(20, path_to_stderr)
         for line_ in lines:
             log.error(line_.strip())
@@ -486,8 +487,11 @@ def __exe_workflow(global_registry, ep_d, bg, task_opts, workflow_opts, output_d
                     slog.error(result.error_message)
                     log.error(result.error_message + "\n")
                     sys.stderr.write(result.error_message + "\n")
-
-                    _log_task_failure_and_call_services(result.error_message, tid_)
+                    try:
+                        task_dir = os.path.join(job_resources.tasks, tid_)
+                        _log_task_failure_and_call_services(task_dir, tid_)
+                    except Exception:
+                        log.exception('Error while processing non-successful Task Result')
 
                     # let the remaining running jobs continue
                     w_ = workers.pop(tid_)
@@ -495,8 +499,10 @@ def __exe_workflow(global_registry, ep_d, bg, task_opts, workflow_opts, output_d
 
                     total_nproc -= task_.nproc
                     has_failed = True
-
-                    BU.write_binding_graph_images(bg, job_resources.workflow)
+                    try:
+                        BU.write_binding_graph_images(bg, job_resources.workflow)
+                    except Exception:
+                        log.exception('Error while writing graph for non-successful Task Result')
 
                 _update_msg = _status(bg)
                 log.info(_update_msg)
